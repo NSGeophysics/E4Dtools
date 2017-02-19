@@ -1,0 +1,26 @@
+First make the exodusII file from the conductivities:
+
+bx -f dak1dip.1 sigma.22 conductivity.exo 0
+
+Then make the exodusII file from the sensitivities:
+(first copy-paste the first line of the conductivity file to the first line of the sensitivity file that you rename sensitivity_x.txt)
+bx -f dak1dip.1 sensitivity_x.txt sensitivitiy.exo 0
+
+then copy conductivity.exo into condsens.exo, and turn it into a txt file:
+
+ncdump condsens.exo > condsens_exo.txt
+
+Do the same with sensitivity.exo:
+
+ncdump sensitivity.exo > sensitivity_exo.txt
+
+Then copy-paste the content of sensitivity_exo.txt for the variable vals_elem_var1eb1
+to the variable vals_elem_var2eb1 in the file condsens_exo.txt
+
+and the content of sensitivity_exo.txt for the variable vals_elem_var1eb2 to the variable vals_elem_var2eb2 in the file condsens_exo.txt
+
+If you want you can replace the name "complex_conductivity" to "sensitivity"
+
+I should make this automatic..... There is probably a 1-2 line trick with NCO
+
+

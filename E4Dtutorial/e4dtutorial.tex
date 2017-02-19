@@ -1,0 +1,411 @@
+\documentclass[11pt]{article}
+
+\usepackage{url}
+\setlength{\parskip}{0.5cm plus4mm minus3mm}
+
+\setlength{\parindent}{0cm}
+
+\textwidth=6.4in
+\textheight=8.5in
+\hoffset=-0.7in
+\voffset=-0.7in
+
+\title{E4D tutorial}
+\author{Alain Plattner}
+
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+E4D is a powerful electrical resistivity tomography program written by
+Tim Johnson at PNNL. It can be freely downloaded and installed from
+\url{https://e4d.pnnl.gov/}. The program's strength are that it is
+parallelized and can therefore solve large problems (many inversion
+cells) very quickly. The disadvantage of E4D is that it is harder to
+learn than for example BERT.
+
+E4D uses several types of configuration files which we will discuss in the
+following. The Matlab/Octave scripts that come with this tutorial will
+be helpful to generate the content for many of these input files.
+
+In this tutorial we will go step by step, starting with generating a
+simple mesh and moving through calculating inversions. Preparing the
+input files for complex meshes is the hardest part of using E4D, so we
+will go step by step from simple (but usually useless) meshes to
+complicated meshes.
+
+Generally the work flow for using E4D will be to first construct a
+mesh, and then run the inversion on a prepared mesh. E4D always
+requires an input file named \verb+e4d.inp+. In this input file, the
+user specifies what needs to be done (e.g. mesh generation,
+inversion), and the names of the configuration and data files.
+
+
+\section{Mesh generation}
+On your desktop, or in any folder you would like to work in, create a
+file named \verb+e4d.inp+. You can do that for example with emacs by
+running in your folder
+
+\qquad \verb+emacs e4d.inp+ 
+
+
+\subsection{My first mesh}\label{simplemesh}
+
+To make e4d create a mesh, the first line of \verb+e4d.inp+ needs to
+be the number 1. The second line needs to be the name of our mesh
+configuration file. Let's call it \verb+myfirstmesh.cfg+. So make your
+\verb+e4d.inp+ text file look like
+
+\verb+1+\\
+\verb+myfirstmesh.cfg+
+
+Of course, we now need to create the mesh configuration file
+\verb+myfirstmesh.cfg+. To do that, create it again using emacs
+
+\qquad \verb+emacs myfirstmesh.cfg+
+
+This file will now be a bit more complicated than the input file.
+A mesh file will always consist of the following components:
+\begin{itemize}
+\item The mesh quality (how deformed can the tetrahedra be), and
+  maximum tetrahedra volume
+\item the bottom elevation of the mesh
+\item some information on how to build the mesh (this will always be
+  the same so don't worry about this now)
+\item The points around which the mesh will be generated including
+  electrode positions, topography, boundary points for the internal
+  and external zones, electrode depth points for mesh refinement
+  around the electrodes, etc.
+\item Internal planes to delineate between mesh zones
+\item holes (I have not yet worked with holes in the mesh so we will
+  skip this in this tutorial)
+\item zone descriptions
+\item information about writing a paraview/exodus file
+\end{itemize}
+
+Let's start with the simplest possible configuration. We first need to
+learn how we write points. A point always has the form
+
+\emph{pointnumber xcoord ycoord zcoord type}
+
+\emph{type} can be subsurface point (0), or surface point (1) or
+external boundary point (2).
+
+The external boundary points define the outside boundary of our region
+so we will always need them.
+
+Let's write our \verb+myfirstmesh.cfg+ file. Let's make the mesh
+quality 1.3 and the maximum volume $10^{12}$. The surface will be
+defined by the external boundary points (which by definition are on
+the surface), and the bottom will be at -20 m. We want the external
+boundary to be at at four points (-10/-30/0), (50/-5/1), (40/70/-1.2),
+and (-20/60/0). The units of these coordinates are meters.
+
+\newpage
+So the lines in our file \verb+myfirstmesh.cfg+ will be:
+
+\verb+1.3 1e12   (mesh quality, max volume)+\\
+\verb++\\
+\verb+-20   (bottom elevation of mesh)+\\
+\verb+1+\\
+\verb+"tetgen"+\\
+\verb+"triangle"+\\
+\verb++\\
+\verb+4   (number of points)+\\
+\verb+1 -10 -30 0 2   (first boundary point)+\\
+\verb+2 50 -5 1 2  (second boundary point)+\\
+\verb+3 40 70 -1.2 2  (etc)+\\
+\verb+4 -20 60 0 2+\\
+\verb++\\
+\verb+0   (no internal planes)+\\
+\verb++\\
+\verb+0   (no holes)+\\
+\verb++\\
+\verb+1   (one zone)+\\
+\verb+1 0 0 -2 50 0.01   (point in zone, max mesh size this zone, conductivity)+\\
+\verb++\\
+\verb+1   (save mesh as exodus file)+\\
+\verb+"bx"  (use the program "bx")+\\
+\verb++\\
+\verb+1   (mesh translation option)+
+
+
+\vspace{2cm}
+
+If you want you can omit the comments in parenthesis. These will not
+be used by the program but it may make it easier for you to edit the
+mesh configuration file.
+
+In this file we needed to define parameters such as maximum tetrahedra
+volume for each zone (at this point we only have one zone), and the
+conductivity. To do this we needed to pick a random point within our
+zone, we picked (0/0/-2), and set the maximum tetrahedra volume, we
+selected 50 m$^3$, and for the conductivity, we selected 0.01
+S/m. These values are for zone 1, therefore the line read
+
+\emph{1 0 0 -2 50 0.01}
+
+To create the mesh, run in your command line
+
+\qquad \verb+e4d+
+
+The program will automatically look in the input file \verb#e4d.inp#
+and use the mesh configuration file you specified there and will
+create a lot of auxiliary files. Open the resulting file
+\verb#myfirstmesh.exo# using paraview.
+
+
+\textbf{Exercise:}
+Play around with the maximum mesh size for the zone (which we had originally set to 5) and see if you can create a finer mesh.
+
+
+\subsection{Adding electrodes}
+
+The mesh we created in Section~\ref{simplemesh} looks great but will
+be of limited use when we want to start running inversions. The
+minimal thing that we need to do is to add nodes where we have
+electrodes.
+
+Let's assume the simple case where we have only 3 electrodes, all on
+the surface, at the points (0/0/0), (0/1/0.5), and (0/2/0.2). We will
+add these points to the mesh simply by including them in our list of
+points. Since our electrodes are all on the surface, their \emph{type}
+has the value 1. Our new list of points therefore looks like
+
+\verb+7   (number of points)+\\
+\verb+1 -10 -30 0 2   (first boundary point)+\\
+\verb+2 50 -5 1 2  (second boundary point)+\\
+\verb+3 40 70 -1.2 2  (etc)+\\
+\verb+4 -20 60 0 2+\\
+\verb++\\
+\verb+5 0 0 0 1   (first electrode)+\\
+\verb+6 0 1 0.5 1  (second electrode)+\\
+\verb+7 0 2 0.2 1  (third electrode)+
+
+The rest of the file \verb+myfirstmesh.cfg+ stays the same as
+before. You do not have to insert an empty line between the external
+boundary points and the electrodes, but it may make it easier when you
+have many electrodes. 
+
+Run in your command prompt
+
+\qquad \verb+e4d+
+
+and open the resulting mesh again with paraview. You will notice that
+the mesh looks a bit different. There are smaller tetrahedra where the
+electrodes are.
+
+When running electrical resistivity inversions, you will likely run
+into problems when the mesh is too coarse around your electrodes. To
+create a fine mesh around the electrodes, we will add depth points
+underneath the electrodes. These depth points will have the same x and
+y coordinates as the electrodes but are a few cm (or m) below the
+electrodes (the depth will depend on how fine you will want the mesh
+around your electrodes). Let's pick 1 cm in this example (our
+electrodes are only 1 m apart). Because
+these points are below the surface, their \emph{type} is 0. So your
+new list of points will be
+
+\verb+10   (number of points)+\\
+\verb+1 -10 -30 0 2   (first boundary point)+\\
+\verb+2 50 -5 1 2  (second boundary point)+\\
+\verb+3 40 70 -1.2 2  (etc)+\\
+\verb+4 -20 60 0 2+\\
+\verb++\\
+\verb+5 0 0 0 1   (first electrode)+\\
+\verb+6 0 1 0.5 1  (second electrode)+\\
+\verb+7 0 2 0.2 1  (third electrode)+\\
+\verb++\\
+\verb+8 0 0 -0.01 0   (first electrode depth point)+\\
+\verb+9 0 1 0.49 0  (second electrode depth point)+\\
+\verb+10 0 2 0.19 0  (third electrode depth point)+\\
+
+When you run
+
+\qquad \verb+e4d+
+
+with this new \verb+myfirstmesh.cfg+ file, and you look at the result
+using paraview, you will see that the mesh around the electrodes is
+very fine.
+
+Congratulations, you created your first mesh that could be used for
+electrical resistivity tomography. However, to get good results with
+reasonable computing power, there is more to learn.
+
+\subsection{Internal boundaries}
+
+One of the problems of electrical resistivity tomography is that our
+mesh ends somewhere. This of course is not the case in nature. The
+world does not just end. This boundary is therefore artificial.
+
+To avoid problems with this artificial boundary, we will usually have
+the external boundary far away, by placing the external boundary
+points (the \emph{type} 2 points) far away.
+
+But this leads to the problem that we either can only have a coarse
+grid away from the electrodes, or we need to fill the entire volume
+with a fine mesh.
+
+Luckily, E4D allows us to create an internal zone with fine mesh
+(where we have the electrodes and good coverage), and an external
+zone with coarse mesh (which allows us to push the external boundary
+far away). In fact, we can have as many zones as we want. We could
+make a very fine mesh zone very close to the electrodes, then a
+coarser mesh zone a bit further away, and finally a very course mesh
+zone surrounding everything.
+
+In this example we will only create two zones, an external zone and an
+internal zone, but you can use what you learned here to create more
+complex cases.
+
+To create zones we need to create zone boundaries and to create zone
+boundaries we need to first pick zone boundary points.
+
+Let's say we want the inner-zone boundary points (-2/-2/-0.3),
+(-2/4/0.2), (2/4/0), and (2/-2/0.1). \textbf{Note that these points
+  are in clockwise order}. It is important that you enter your points
+in clockwise (or counter-clockwise) order, otherwise the boundary
+generation will not work.
+
+Writing your own internal boundaries can be difficult. To make life
+easier, I wrote the \textsc{Matlab}/\textsc{Octave} program
+\verb+makezone.m+ to do this for us. It's in the folder \verb+m-files+
+in the same repository where you found this tutorial. Run, in
+\textsc{Matlab} or \textsc{Octave}
+
+\qquad \verb+>> help makezone+
+
+to see what input is required. The simplest way of using it is to give
+it the surface points (or shallower subsurface points, if you want a completely
+buried zone), the depth of the zone under the surface (let's say we
+want the internal zone to end at 5 m depth), and the number of
+the first point (we already have 10 points in our list, so the first
+point will be 11).  Let's say we want the text output to be stored in
+the file \verb+myfirstzone.txt+. To do all of this, run in
+\textsc{Matlab} or \textsc{Octave}
+
+\qquad \verb+>> makezone([-2,-2,2,2],[-2,4,4,-2],[-0.3,0.2,0,0.1],-5,11,'myfirstzone.txt')+
+
+
+The resulting file \verb+myfirstzone.txt+ will contain the points
+with point numbers between 11 and 18, and information about internal
+planes. Add the points to your list of points in your
+\verb+myfirstmesh.cfg+ file (don't forget to update the total number
+of points) and replace the line saying that there are
+no internal planes with the internal planes you generated.
+
+So the points part of your file \verb+myfirstmesh.cfg+ will now be
+
+
+\verb+18   (number of points)+\\
+\verb+1 -10 -30 0 2   (first boundary point)+\\
+\verb+2 50 -5 1 2  (second boundary point)+\\
+\verb+3 40 70 -1.2 2  (etc)+\\
+\verb+4 -20 60 0 2+\\
+\verb++\\
+\verb+5 0 0 0 1   (first electrode)+\\
+\verb+6 0 1 0.5 1  (second electrode)+\\
+\verb+7 0 2 0.2 1  (third electrode)+\\
+\verb++\\
+\verb+8 0 0 -0.01 0   (first electrode depth point)+\\
+\verb+9 0 1 0.49 0  (second electrode depth point)+\\
+\verb+10 0 2 0.19 0  (third electrode depth point)+\\
+\verb++\\
+\verb+11 -2.000000 -2.000000 -0.300000 1 +\\
+\verb+12 -2.000000 4.000000 0.200000 1 +\\
+\verb+13 2.000000 4.000000 0.000000 1 +\\
+\verb+14 2.000000 -2.000000 0.100000 1 +\\
+\verb++\\
+\verb+15 -2.000000 -2.000000 -5.000000 0 +\\
+\verb+16 -2.000000 4.000000 -5.000000 0 +\\
+\verb+17 2.000000 4.000000 -5.000000 0 +\\
+\verb+18 2.000000 -2.000000 -5.000000 0 +\\
+
+And the internal planes part will now be
+
+\verb+5 number of internal planes+\\
+\verb+4 10+\\
+\verb+11 12 16 15+\\
+\verb+4 10+\\
+\verb+12 13 17 16+\\
+\verb+4 10+\\
+\verb+13 14 18 17+\\
+\verb+4 10+\\
+\verb+11 14 18 15+\\
+\verb+4 10+\\
+\verb+15 16 17 18+\\ 
+\verb++\\
+
+Note that here we used the internal boundary number 10, which I set as
+default. If you have several internal zones, then you may want to use
+different internal boundary numbers (one for each zone).
+
+
+We will also need to add that we have a second zone. We do that by
+simply adding a line in the zones part of the file
+\verb+myfirstmesh.cfg+ and set the maximum mesh volume and
+conductivity for this zone. For this we need to find a point in the
+external zone. In our case, the point (10/10/-10) should do. The point
+(0/0/-2) is still within our internal zone. Let's set, for the
+internal zone, the maximum mesh volume 1 m$^3$ and for the external zone
+the maximum mesh volume $10^5$ m$^3$. We set 0.01 S/m for the
+conductivity of both zones.
+
+Hence our new ``zones'' part of the file \verb+myfirstmesh.cfg+ will
+be
+
+\verb+2  (two zones)+\\
+\verb+1 0 0 -2 1 0.01  (internal zone with fine mesh)+\\
+\verb+2 10 10 -10 1e5 0.01  (external zone with coarse mesh)+
+
+
+After updating your file \verb+myfirstmesh.cfg+, run on the command
+line
+
+\qquad \verb+e4d+
+
+and look at the new mesh using paraview.
+
+You will see that your new mesh has two different zones and the mesh
+of the internal zone is much finer than the mesh of the external zone.
+
+
+Congratulations, you now have the knowledge needed to create
+electrical resistivity tomography meshes for quite general settings.
+
+\textbf{A note on topography:} As you noticed, all of our points had a
+z-axis value. This is how you define topography. As long as your point
+is either of \emph{type} 1 or 2, the mesh generator will know that it
+is on the surface and will incorporate it into the topography. To
+incorporate complex topography, simply add all the topography points
+to your points list as \emph{type} 1 surface points (don't forget to
+update the total number of points).
+
+\textbf{Exercise:} Instead of a 4 point internal zone boundary, make a
+5 point internal zone boundary. Make sure you enter the points in
+clockwise orientation.
+
+\textbf{Exercise:} Download topography points from an online database
+(for example \url{http://opentopo.sdsc.edu/datasets}) and create a
+mesh for these topography points.
+
+To make your life easier I wrote \textsc{Matlab}/\textsc{Octave}
+functions that can help with some of the tasks for mesh
+generation. You can find them in the folder \verb+m-files+. For
+example, the function \verb+elecs2points.m+ will write electrode
+coordinates in the format that can directly be copy-pasted into your
+e4d mesh configuration file. The function \verb+topodata2grid.m+ can
+turn ASCII point-cloud data downloaded from
+\url{http://opentopo.sdsc.edu/datasets} into the format that can be
+copy-pasted into the e4d mesh configuration file (including
+downsampling).
+
+
+
+
+
+\end{document}
+
+

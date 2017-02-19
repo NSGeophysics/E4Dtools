@@ -1,0 +1,8 @@
+2			run mode
+zigdip.1.node		mesh node file
+zigdip_5p.srv 		survey file
+zigdip.sig		starting conductivity
+zigdip_sens.out 	name for output options file
+
+
+

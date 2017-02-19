@@ -1,0 +1,10 @@
+bx -af dak1dip.1 sigma.6 dak1dip.exo 6
+
+% the name dak1dip.1 is the grid name 
+% sigma.6 is the conductivity name (6th iteration)
+% dak1dip.exo is the preexisting exo file 
+% the last number is the time step
+
+% Or, if you want to create a new .exo file:
+
+bx -f mysurvey.1 sigma.6 mysurvey.exo 0

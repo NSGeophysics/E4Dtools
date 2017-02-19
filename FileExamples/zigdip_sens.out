@@ -1,0 +1,6 @@
+1		dp_flag = 1 to print simulated data
+zigdip.dpd	name of simulated data file
+1		number of potential distributions to construct
+1		index of potential distribution to print
+1 		Flag to write out jacobian
+'ascii' 	Jacobian style

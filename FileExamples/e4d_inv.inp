@@ -1,0 +1,7 @@
+3			run mode
+dak1dip.1.node		mesh node file
+dak1dip.srv 		survey file
+'average'		starting conductivity
+dak1dip.out 		name for output options file
+dak1dip_1.inv       	inverse options file
+none			reference model

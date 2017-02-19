@@ -1,0 +1,30 @@
+Step 1:
+Make topography / outer mesh
+
+Step 2: 
+Get electrode x,y,z coordinates:
+Either directly from GPS file, or if only endpoints are known, use
+interpEndpoints.m
+to get the coordinates
+Use 
+elecs2points.m
+to make a file containing the electrode locations for the grid.
+
+If topography/outer mesh present, put topography/outer mesh together with points in one file.
+Use  boundaryTopo.m to write the bounding box etc for inner and outer zone.
+
+To find good boundary points:
+- plot all points (x/y).
+- it is easy to find x/y coordinates for a good bounding box, but it's tricky to find good topography values. 
+To find good topography values, take the topography from the closest point. For example write out all x points that are close to the minimum x point and see which one is close to min and max y point. Then use their altitude. Do the same with max x.
+
+After you wrote out the boundary with boundaryTopo.m, you may need to shift the outer endpoints further out to avoid problems with the mesh generation.
+
+
+put the output of topography, electrodes, and boundary into the same .cfg file and run the mesh generation
+
+
+
+
+
+
