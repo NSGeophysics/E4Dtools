@@ -43,7 +43,7 @@ user specifies what needs to be done (e.g. mesh generation,
 inversion), and the names of the configuration and data files.
 
 
-\section{Mesh generation}
+\section{Mesh generation}\label{meshsec}
 On your desktop, or in any folder you would like to work in, create a
 file named \verb+e4d.inp+. You can do that for example with emacs by
 running in your folder
@@ -403,7 +403,29 @@ copy-pasted into the e4d mesh configuration file (including
 downsampling).
 
 
+\section{Inversion}
 
+In order to invert ERT data we need:
+
+\begin{itemize}
+\item A mesh that has the electrodes incorporated (see Section~\ref{meshsec})
+\item A data file .srv
+\item An inversion options file
+\item An output options file
+\end{itemize}
+
+We learn how to do these things using a very simple data set collected on Fresno State Campus. The data \verb+LNWEN3D.ohm+ is in the folder \verb+tutdata+. The folder \verb+m-files+ contains \textsc{Matlab}/\textsc{Octave} functions to turn .ohm files into .srv files. Thomas Gunther's program DC2DInvRes, freely available from \url{resistivity.net} allows to transform most commonly used ERT data formats into .ohm (and allows for basic data quality control).
+
+\subsection{Step 1: Create the basic mesh file}
+To do this we need to decide what area we want for the internal and external zone. When opening the data file LNWEN3D.ohm with a standard text editor we see that the 28 electrodes are all along the x-axis at a 0.5 m spacing with the first electrode at the origin (0/0/0) and the last electrode at (13.5/0/0). Let's make a mesh with external zone between the four points (-100/-100/0), (-100/115/0), (100/115/0), and (100/-100/0). For the internal zone we pick (-5/-5/0), (-5/5/0), (20/5/0), and (20/-5/0).
+
+\textbf{Task:} Create a mesh for the given external- and internal-zone boundary points. Do not yet add the electrodes. We will use the functions in the folder \verb+m-files+ to make that part easier.
+
+
+
+\subsection{Step 2: Create the data file and add electrode positions to mesh file}
+
+We will transform a given .ohm file (see \url{http://resistivity.net/}) into an .srv file and use the read electrode positions to add them to the mesh file.
 
 
 \end{document}
