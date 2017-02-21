@@ -484,7 +484,7 @@ shiftpointnr to 12.
 
 \qquad
 \verb+>> elecs2points(electrodes(:,1),electrodes(:,2),electrodes(:,3),...+\\
-\qquad \verb+'elecs.txt',12,0.01)+
+\hspace{1cm} \verb+'elecs.txt',12,0.01)+
 
 creates a file \verb+elecs.txt+, from which we can copy the electrode
 points and the electrode depth points and paste them into our mesh
@@ -500,7 +500,9 @@ to generate the mesh and look at it using Paraview. The resulting mesh
 should have two zones. The external zone should have a very coarse
 mesh, the internal zone should have a mesh that is coarse at the
 boundary to the external zone and gets finer toward the electrodes. At
-the electrodes, the mesh should be very fine. 
+the electrodes, the mesh should be very fine.
+
+\subsection{Inversion options file}
 
 We now need to write an inversion configuration file. The E4D user
 guide \url{https://e4d.pnnl.gov/Documents/E4D_User_Guide.pdf} has
@@ -529,17 +531,20 @@ guide. Open a text file named \verb+myinvoptions.inv+ and write in it
 \verb+1.0               w_rel+ \\
 \verb++ \\
 \verb+100 0.25 0.5      beta min_red beta_red+ \\
-\verb+1.0 	             chi_targ+ \\
-\verb+30 50	            miniter maxiter+ \\
+\verb+1.0               chi_targ+ \\
+\verb+30 50             miniter maxiter+ \\
 \verb+0.00001 1.0       minsig maxsig+ \\
-\verb+2		                up_opt+ \\
+\verb+2                 up_opt+ \\
+\verb+0                 number of scaling factors+\\
 \verb+1 3.0             cflag cdev+
 
 
-\vspace{2cm}
+\vspace{1cm}
 I recommend studying Section 3 of the E4D user guide to understand
 what these parameters mean and how changing them will affect the
 inversion outcome. 
+
+\subsection{Running the inversion}
 
 We now need to adapt the e4d input file \verb+e4d.inp+. I recommend to
 save the mesh generation version as \verb+e4d_mesh.inp+ such that we
@@ -570,8 +575,65 @@ above command. The number of processors you want to use is limited by
 the number of processors you machine has.
 
 
-NEXT: HOW TO ADD TO EXO FILE, HOW TO TURN INTO RESISTIVITIES INSTEAD
-OF CONDUCTIVITIES, AND CAVEATS WHEN USING PARAVIEW TO VIEW THE RESULTS.
+\subsection{Viewing the inversion results}
+
+During the inversion, E4D writes out the resulting conductivities for
+each iteration. These are named sigma.1, sigma.2, etc., and are simple
+text files with numbers in them. Each number represents the resulting
+conductivity for that particular cell of the mesh. To turn the
+conductivities into an .exo file, say we want to create the file
+\verb+myconductivities.exo+ from the inversion result \verb+sigma.2+,
+run in a command line
+
+\qquad \verb+bx -f myfirstinvmesh.1 sigma.2 myconductivities.exo 0+
+
+\textbf{Usually your inversion will run for more than just 2
+  iterations. I recommend to take the last inversion result, for
+  example sigma.23 if it ran for 23 iterations.}
+
+\textbf{Hint:} When looking at your result in Paraview, you have to
+select the variable \verb+real_conductivity+ before you click on
+``Apply''. I also recommend to un-check the ``Unnamed  block ID: 2''
+to only show the internal zone. Finally, once you clicked on
+``Apply'', you have to select \verb+real_conductivity+ as the
+parameter to display the pseudocolors.   
+
+
+When viewing your inversion result in Paraview you will notice that 1)
+they don't look very interesting and 2) the values are ``odd''. This
+is because we display the conductivity in S/m and not the resistivity
+in $\Omega$ m. To turn conductivity into resistivity, there are two
+ways. Either use the \textsc{Matlab}/\textsc{Octave} program
+\verb+sigma2rho.m+
+
+\qquad \verb+>> sigma2rho('sigma.2','rho.2')+
+
+or, if you have GMT installed (which we have on
+the Student computer), run in the command line
+
+\qquad \verb#gmt math 1 sigma.2 DIV -hi = rho.2#
+
+and then delete the second and third row and remove the \# sybmol from
+the first row. Editing the rho.2 file is only necessary when you use GMT to calculate
+the resistivities.
+
+Congratulations! You calculated your first inversion. The resulting
+resistivity is symmetric because we only have profile data. To get
+more interesting inversion results you can either work with your own
+data, or use data from the E4D examples obtainable from \url{https://e4d.pnnl.gov/Documents/e4d_tutorial.tgz}
+
+\textbf{Exercise:} Refine the mesh for the internal zone and rerun the
+inversion. Hint: The mesh size is controlled by the maximum mesh size
+parameter in your \verb+myfirstinvmesh.cfg+ file, where you define the
+zones. Other hint: You will need to recreate the mesh, which means
+renaming  \verb+e4d.inp+ to, for example \verb+e4d_inv.inp+ and
+renaming \verb+e4d_mesh.inp+ to \verb+e4d.inp+ and then, once the mesh
+is created, rename them back.
+
+\textbf{Exercise:} Play around with the inversion options. See how
+they influence the inversion result.
+
+
 
 \end{document}
 
