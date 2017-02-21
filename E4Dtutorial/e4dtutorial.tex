@@ -157,8 +157,9 @@ create a lot of auxiliary files. Open the resulting file
 \verb#myfirstmesh.exo# using paraview.
 
 
-\textbf{Exercise:}
-Play around with the maximum mesh size for the zone (which we had originally set to 5) and see if you can create a finer mesh.
+\textbf{Exercise:} Play around with the maximum mesh size for the zone
+(which we had originally set to 5) and see if you can create a finer
+mesh.
 
 
 \subsection{Adding electrodes}
@@ -416,21 +417,161 @@ In order to invert ERT data we need:
 
 We learn how to do these things using a very simple data set collected on Fresno State Campus. The data \verb+LNWEN3D.ohm+ is in the folder \verb+tutdata+. The folder \verb+m-files+ contains \textsc{Matlab}/\textsc{Octave} functions to turn .ohm files into .srv files. Thomas Gunther's program DC2DInvRes, freely available from \url{resistivity.net} allows to transform most commonly used ERT data formats into .ohm (and allows for basic data quality control).
 
+I suggest that you create a new folder for the mesh generation and inversion that we will do in this chapter.
+
 \subsection{Step 1: Create the basic mesh file}
-To do this we need to decide what area we want for the internal and external zone. When opening the data file LNWEN3D.ohm with a standard text editor we see that the 28 electrodes are all along the x-axis at a 0.5 m spacing with the first electrode at the origin (0/0/0) and the last electrode at (13.5/0/0). Let's make a mesh with external zone between the four points (-100/-100/0), (-100/115/0), (100/115/0), and (100/-100/0). For the internal zone we pick (-5/-5/0), (-5/5/0), (20/5/0), and (20/-5/0).
+To do this we need to decide what area we want for the internal and
+external zone. When opening the data file LNWEN3D.ohm with a standard
+text editor we see that the 28 electrodes are all along the x-axis at
+a 0.5 m spacing with the first electrode at the origin (0/0/0) and the
+last electrode at (13.5/0/0). Let's make a mesh with external zone
+between the four points (-100/-100/0), (-100/115/0), (100/115/0), and
+(100/-100/0). For the internal zone we pick (-5/-5/0), (-5/5/0),
+(20/5/0), and (20/-5/0). Make the internal zone 17 m deep and the
+external zone 50 m deep. For the internal zone, let's make the maximum
+mesh size 5 m$^3$ and for the external zone $10^7$ m$^3$.
 
-\textbf{Task:} Create a mesh for the given external- and internal-zone boundary points. Do not yet add the electrodes. We will use the functions in the folder \verb+m-files+ to make that part easier.
+\textbf{Task:} Create a mesh for the given external- and internal-zone
+boundary points. Let's call the mesh .cfg file
+\verb+myfirstinvmesh.cfg+. You will also need to create a new
+\verb+e4d.inp+ file. In the \verb+myfirstinvmesh.cfg+ file, do not yet
+add the electrodes. We will use the functions in the folder
+\verb+m-files+ to make that part easier.
 
+\textbf{Hint:} If the mesh generation fails, you can try making the
+internal zone a bit deeper or move the boundary points around. For
+example, try to create the mesh with the current settings but change
+the depth of the internal zone to 10 m. The mesh generation will
+(probably) fail.
 
 
 \subsection{Step 2: Create the data file and add electrode positions to mesh file}
 
-We will transform a given .ohm file (see \url{http://resistivity.net/}) into an .srv file and use the read electrode positions to add them to the mesh file.
+We will transform a given .ohm file (see
+\url{http://resistivity.net/}) into an .srv file and use the loaded
+electrode positions to add them to the mesh file.
 
-The function \verb+OHM2E4D.m+ will do this for us. In addition, it will return the electrode positions. To use \verb+OHM2E4D.m+ you will need to set the input file,
+The function \verb+OHM2E4D.m+ will do this for us. In addition, it
+will return the electrode positions. Look at the help page of
+\verb+OHM2E4D.m+ to understand how to use it. The provided data file
+\verb+LNWEN3D.ohm+ does not have any data errors (open it with a text
+editor, scroll down to the measured data: The column with the error is
+missing). This means we need to estimate the error (in percent). For
+this example, let's say it's 5 \%.
+
+So we need to run in \textsc{Matlab}/\textsc{Octave}
+
+\qquad \verb+>> electrodes=OHM2E4D('LNWEN3D.ohm','LNWEN3D',5);+
+
+Let's also save the electrodes
+
+\qquad \verb+>> save('electrodes.mat','electrodes');+
+
+When you open the file \verb+LNWEN3D.srv+ in a text editor, you will
+find that it looks similar to the original .ohm file, but the points
+are in E4D format, the data are numbered, and there is a column for
+data error.
+
+Let's use \verb+elecs2points.m+ to create the electrode points for the mesh
+file. Remember we also need to create electrode depth points to refine
+the mesh around the electrodes. Let's put the depth points at 1 cm
+depth. For wider electrode spacings you can set this depth to a
+greater value.
+
+Remember that our points need to be numbered and that we already have
+12 points in our \verb+myfirstinvmesh.cfg+ file. So we need to set
+shiftpointnr to 12.
+
+\qquad
+\verb+>> elecs2points(electrodes(:,1),electrodes(:,2),electrodes(:,3),...+\\
+\qquad \verb+'elecs.txt',12,0.01)+
+
+creates a file \verb+elecs.txt+, from which we can copy the electrode
+points and the electrode depth points and paste them into our mesh
+.cfg file \verb+myfirstinvmesh.cfg+. \textbf{Remember to set the
+  number of points to the new correct value}. We now have,
+alltogether, 68 points.
+
+Run
+
+\verb+e4d+
+
+to generate the mesh and look at it using Paraview. The resulting mesh
+should have two zones. The external zone should have a very coarse
+mesh, the internal zone should have a mesh that is coarse at the
+boundary to the external zone and gets finer toward the electrodes. At
+the electrodes, the mesh should be very fine. 
+
+We now need to write an inversion configuration file. The E4D user
+guide \url{https://e4d.pnnl.gov/Documents/E4D_User_Guide.pdf} has
+more detailed descriptions on how to write inversion options
+files. Here we create the simplest possible file for our two-zone situation.
+
+I took the following inversion file pretty much directly from the E4D user
+guide. Open a text file named \verb+myinvoptions.inv+ and write in it
+
+\newpage
+
+\verb+2                 # of constraint blocks+ \\
+\verb++\\
+\verb+1                 constraint zone 1     + \\            
+\verb+2  1.0 1.0 1.0    structural metric 2 (wx wy wz ignored) + \\
+\verb+1  10.0 .01       weight func. 1 with mean of 10 and small s.d+ \\
+\verb+1 2               one link to zone 2+ \\
+\verb+0.0               reference value (not used)+ \\
+\verb+1.0               relative weight+ \\
+\verb++\\
+\verb+2                 zone # this block constrains  + \\            
+\verb+2  1.0 1.0 1.0    s_met wx wy wz + \\
+\verb+1  10.0 .01       fw mn sd     + \\
+\verb+0                 no links, these are given already + \\
+\verb+0.0               v_ref+ \\
+\verb+1.0               w_rel+ \\
+\verb++ \\
+\verb+100 0.25 0.5      beta min_red beta_red+ \\
+\verb+1.0 	             chi_targ+ \\
+\verb+30 50	            miniter maxiter+ \\
+\verb+0.00001 1.0       minsig maxsig+ \\
+\verb+2		                up_opt+ \\
+\verb+1 3.0             cflag cdev+
 
 
+\vspace{2cm}
+I recommend studying Section 3 of the E4D user guide to understand
+what these parameters mean and how changing them will affect the
+inversion outcome. 
 
+We now need to adapt the e4d input file \verb+e4d.inp+. I recommend to
+save the mesh generation version as \verb+e4d_mesh.inp+ such that we
+can use it again later.
+
+To run an inversion, e4d input file needs to look as follows:
+
+\verb+3                      (run mode; 3 means inversion. 1 was mesh generation)+\\
+\verb+myfirstinvmesh.1.node  (the name of your mesh file with .1.node appended)+\\
+\verb+LNWEN3D.srv            (The data file)+\\
+\verb+'average'              (How to calculate starting conductivity)+\\
+\verb+myoutput.out           (Output options file; not important at this point)+\\
+\verb+myinvoptions.inv       (Inversion options file)+\\
+\verb+none                   (reference model)+
+
+\newpage
+
+To run the inversion calculation, simply running e4d will not
+work. These computations are usually work-intense and e4d is
+parallelized to make the calculations much faster. Therefore to
+calculate the inversion we need to run e4d in parallel mode. Let's
+start by using 5 processors:
+
+\qquad \verb+mpirun -np 5 e4d+
+
+To run it with 10 parallel processors, simply change 5 to 10 in the
+above command. The number of processors you want to use is limited by
+the number of processors you machine has.
+
+
+NEXT: HOW TO ADD TO EXO FILE, HOW TO TURN INTO RESISTIVITIES INSTEAD
+OF CONDUCTIVITIES, AND CAVEATS WHEN USING PARAVIEW TO VIEW THE RESULTS.
 
 \end{document}
 
