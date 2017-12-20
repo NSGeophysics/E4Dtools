@@ -84,3 +84,4 @@ if ~topsurface
     fprintf(fout,'\n');   
 end
 
+fclose(fout);
